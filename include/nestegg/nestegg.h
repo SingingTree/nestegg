@@ -89,6 +89,9 @@ extern "C" {
 #define NESTEGG_LOG_ERROR    1000  /**< Error level log message. */
 #define NESTEGG_LOG_CRITICAL 10000 /**< Critical level log message. */
 
+#define NESTEGG_ENCODING_COMPRESSION 0 /**< Content encoding type is compression. */
+#define NESTEGG_ENCODING_ENCRYPTION  1 /**< Content encoding type is encryption. */
+
 typedef struct nestegg nestegg;               /**< Opaque handle referencing the stream state. */
 typedef struct nestegg_packet nestegg_packet; /**< Opaque handle referencing a packet of data. */
 
@@ -147,6 +150,14 @@ typedef struct {
   uint64_t  codec_delay; /**< Nanoseconds that must be discarded from the start. */
   uint64_t  seek_preroll;/**< Nanoseconds that must be discarded after a seek. */
 } nestegg_audio_params;
+
+typedef struct {
+  unsigned int content_encoding_type;
+  unsigned int content_enc_algo;
+  unsigned int aes_settings_cipher_mode;
+  unsigned char * content_enc_key_id;
+  uint64_t enc_key_id_length;
+} nestegg_encryption_params;
 
 /** Logging callback function pointer. */
 typedef void (* nestegg_log)(nestegg * context, unsigned int severity, char const * format, ...);
@@ -368,12 +379,27 @@ int nestegg_packet_additional_data(nestegg_packet * packet, unsigned int id,
     @retval -1 Error. */
 int nestegg_packet_discard_padding(nestegg_packet * packet,
                                    int64_t * discard_padding);
+/**
+ @retval  0 No encryption info present on packet
+ @retval  1 Encryption infomation present on packet
+ @retval -1 Error */
+int nestegg_packet_encryption(nestegg_packet * packet, unsigned char ** iv,
+                              size_t * length);
 
 /** Query the presence of cues.
     @param context  Stream context initialized by #nestegg_init.
     @retval 0 The media has no cues.
     @retval 1 The media has cues. */
 int nestegg_has_cues(nestegg * context);
+
+/** Query encryption information for a given track.
+    @param context Stream contex initialized by #nestegg_init.
+    @param track   Zero based track number.
+    @param params  Pointer to queried encryption params.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_track_encryption(nestegg * context, unsigned int track,
+                              nestegg_encryption_params * encryption);
 
 /** Try to determine if the buffer looks like the beginning of a WebM file.
     @param buffer A buffer containing the beginning of a media file.
